@@ -1,47 +1,291 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>汇率查询与趋势分析</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FX Pulse｜汇率查询与趋势</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <style>
+    :root{
+      --bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#778199;--line:#e8ebf2;
+      --primary:#3b6cff;--primary-soft:#eef3ff;--green:#17a673;--red:#e04f5f;
+      --shadow:0 12px 35px rgba(29,44,80,.08);--radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+      color:var(--text);background:linear-gradient(180deg,#f8faff 0,#f5f7fb 55%,#f5f7fb 100%)}
+    .wrap{max-width:1200px;margin:0 auto;padding:28px 20px 52px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:22px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#3b6cff,#6d8dff);
+      color:#fff;display:grid;place-items:center;font-weight:800;box-shadow:0 8px 20px rgba(59,108,255,.28)}
+    h1{font-size:22px;margin:0}.sub{font-size:13px;color:var(--muted);margin-top:3px}
+    .refresh{border:1px solid var(--line);background:#fff;padding:10px 14px;border-radius:10px;cursor:pointer;color:var(--text)}
+    .refresh:disabled{opacity:.6}
+    .hero{display:grid;grid-template-columns:1.08fr 1fr;gap:18px;margin-bottom:18px}
+    .card{background:var(--card);border:1px solid rgba(232,235,242,.9);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .converter{padding:24px}
+    .section-title{font-size:15px;font-weight:700;margin:0 0 16px}
+    .convert-grid{display:grid;grid-template-columns:1fr 54px 1fr;gap:10px;align-items:end}
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:7px}
+    input,select{width:100%;height:46px;border:1px solid var(--line);border-radius:11px;background:#fff;padding:0 13px;font-size:15px;color:var(--text);outline:none}
+    input:focus,select:focus{border-color:#9db2ff;box-shadow:0 0 0 3px var(--primary-soft)}
+    .swap{height:46px;border-radius:11px;border:1px solid #dfe5f6;background:var(--primary-soft);color:var(--primary);font-size:18px;cursor:pointer}
+    .result{margin-top:17px;padding:16px;border-radius:14px;background:linear-gradient(135deg,#f4f7ff,#fafbff)}
+    .result-main{font-size:28px;font-weight:800;letter-spacing:-.5px}
+    .result-sub{color:var(--muted);font-size:13px;margin-top:5px}
+    .quote{padding:24px}
+    .quote-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .quote-pair{font-size:16px;font-weight:750}.trend{font-size:13px;font-weight:700}
+    .trend.up{color:var(--green)}.trend.down{color:var(--red)}
+    .rate-big{font-size:34px;font-weight:800;margin:5px 0 2px}
+    .rate-desc{font-size:13px;color:var(--muted)}
+    .chart-wrap{height:180px;margin-top:10px}
+    .dashboard{display:grid;grid-template-columns:2fr 1fr;gap:18px}
+    .trend-card{padding:24px}
+    .toolbar{display:flex;flex-wrap:wrap;gap:9px;justify-content:space-between;align-items:center;margin-bottom:13px}
+    .pairs{display:flex;gap:8px;flex-wrap:wrap}
+    .pill{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 11px;font-size:12px;cursor:pointer;color:var(--muted)}
+    .pill.active{color:var(--primary);border-color:#b6c5ff;background:var(--primary-soft);font-weight:700}
+    .ranges{display:flex;gap:5px}
+    .range{border:0;background:#f3f5f9;padding:7px 10px;border-radius:8px;font-size:12px;color:var(--muted);cursor:pointer}
+    .range.active{background:var(--primary-soft);color:var(--primary);font-weight:700}
+    .main-chart{height:340px}
+    .hot{padding:24px}
+    .hot-list{display:flex;flex-direction:column;gap:10px}
+    .hot-item{display:flex;align-items:center;justify-content:space-between;padding:12px 13px;border:1px solid var(--line);border-radius:12px}
+    .hot-left{display:flex;align-items:center;gap:10px}.flag{font-size:20px}.currency{font-weight:700;font-size:14px}.currency small{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:1px}
+    .hot-right{text-align:right}.hot-rate{font-weight:750;font-size:14px}.hot-change{font-size:11px;margin-top:2px}.up{color:var(--green)}.down{color:var(--red)}
+    .footer{display:flex;justify-content:space-between;gap:16px;margin-top:15px;color:var(--muted);font-size:11px}
+    .status{display:inline-flex;align-items:center;gap:7px}.dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
+    .error{color:var(--red)}
+    @media (max-width:900px){.hero,.dashboard{grid-template-columns:1fr}.main-chart{height:300px}}
+    @media (max-width:600px){.wrap{padding:18px 13px 35px}.topbar{align-items:flex-start}.convert-grid{grid-template-columns:1fr 42px 1fr}.converter,.quote,.trend-card,.hot-card{padding:18px}.main-chart{height:250px}.range{padding:6px 8px}}
+  </style>
 </head>
 <body>
-  <h1>💱 汇率查询与趋势分析</h1>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">FX</div>
+      <div><h1>FX Pulse</h1><div class="sub">汇率查询 · 历史趋势 · 实时换算</div></div>
+    </div>
+    <button class="refresh" id="refreshBtn">↻ 刷新汇率</button>
+  </header>
 
-  <div>
-    <label>输入金额：</label>
-    <input type="number" id="amount" value="100" min="0">
-  </div>
+  <section class="hero">
+    <div class="card converter">
+      <h2 class="section-title">汇率换算</h2>
+      <div class="convert-grid">
+        <div><label>金额</label><input id="amount" type="number" min="0" step="0.01" value="100"/></div>
+        <button class="swap" id="swapBtn" title="交换币种">⇄</button>
+        <div><label>目标货币</label><select id="toCurrency"></select></div>
+      </div>
+      <div style="margin-top:11px"><label>基础货币</label><select id="fromCurrency"></select></div>
+      <div class="result">
+        <div class="result-main" id="resultMain">--</div>
+        <div class="result-sub" id="resultSub">正在获取最新汇率…</div>
+      </div>
+    </div>
 
-  <br>
+    <div class="card quote">
+      <div class="quote-head">
+        <div class="quote-pair" id="quotePair">USD / CNY</div>
+        <div class="trend" id="quoteTrend">--</div>
+      </div>
+      <div class="rate-big" id="quoteRate">--</div>
+      <div class="rate-desc" id="quoteDesc">1 USD = -- CNY</div>
+      <div class="chart-wrap"><canvas id="miniChart"></canvas></div>
+    </div>
+  </section>
 
-  <div>
-    <label>持有货币：</label>
-    <select id="fromCurrency">
-      <option value="USD">🇺🇸 美元 (USD)</option>
-      <option value="CNY" selected>🇨🇳 人民币 (CNY)</option>
-      <option value="EUR">🇪🇺 欧元 (EUR)</option>
-      <option value="JPY">🇯🇵 日元 (JPY)</option>
-      <option value="GBP">🇬🇧 英镑 (GBP)</option>
-    </select>
+  <section class="dashboard">
+    <div class="card trend-card">
+      <div class="toolbar">
+        <div class="pairs" id="pairPills">
+          <button class="pill active" data-pair="USD/CNY">USD/CNY</button>
+          <button class="pill" data-pair="EUR/CNY">EUR/CNY</button>
+          <button class="pill" data-pair="JPY/CNY">JPY/CNY</button>
+          <button class="pill" data-pair="GBP/CNY">GBP/CNY</button>
+          <button class="pill" data-pair="HKD/CNY">HKD/CNY</button>
+        </div>
+        <div class="ranges">
+          <button class="range" data-days="7">7D</button>
+          <button class="range active" data-days="30">30D</button>
+          <button class="range" data-days="90">90D</button>
+          <button class="range" data-days="365">1Y</button>
+        </div>
+      </div>
+      <div class="main-chart"><canvas id="mainChart"></canvas></div>
+    </div>
 
-    <span> ➡️ 兑换为 ➡️ </span>
+    <div class="card hot">
+      <h2 class="section-title">热门汇率</h2>
+      <div class="hot-list" id="hotList"></div>
+      <div class="footer">
+        <span class="status"><span class="dot"></span><span id="statusText">数据加载中</span></span>
+        <span>数据源：Frankfurter</span>
+      </div>
+    </div>
+  </section>
+</div>
 
-    <label>目标货币：</label>
-    <select id="toCurrency">
-      <option value="USD" selected>🇺🇸 美元 (USD)</option>
-      <option value="CNY">🇨🇳 人民币 (CNY)</option>
-      <option value="EUR">🇪🇺 欧元 (EUR)</option>
-      <option value="JPY">🇯🇵 日元 (JPY)</option>
-      <option value="GBP">🇬🇧 英镑 (GBP)</option>
-    </select>
-  </div>
+<script>
+const API = 'https://api.frankfurter.dev/v2';
+const currencies = {
+  USD:'美元', EUR:'欧元', CNY:'人民币', JPY:'日元', GBP:'英镑',
+  HKD:'港币', SGD:'新加坡元', AUD:'澳元', CAD:'加元', CHF:'瑞士法郎'
+};
+const flags = {USD:'🇺🇸',EUR:'🇪🇺',CNY:'🇨🇳',JPY:'🇯🇵',GBP:'🇬🇧',HKD:'🇭🇰',SGD:'🇸🇬',AUD:'🇦🇺',CAD:'🇨🇦',CHF:'🇨🇭'};
 
-  <br>
-  <button id="convertBtn">立即换算</button>
+const fromEl = document.getElementById('fromCurrency');
+const toEl = document.getElementById('toCurrency');
+const amountEl = document.getElementById('amount');
+const resultMain = document.getElementById('resultMain');
+const resultSub = document.getElementById('resultSub');
+const quoteRate = document.getElementById('quoteRate');
+const quoteDesc = document.getElementById('quoteDesc');
+const quoteTrend = document.getElementById('quoteTrend');
+const quotePair = document.getElementById('quotePair');
+const statusText = document.getElementById('statusText');
+const refreshBtn = document.getElementById('refreshBtn');
+let mainChart, miniChart;
+let selectedPair = 'USD/CNY';
+let days = 30;
+let rateCache = {};
 
-  <hr>
-  <h2>换算结果：</h2>
-  <div id="result">请输入金额并点击查询</div>
+function fillSelect(el, selected){
+  el.innerHTML = Object.entries(currencies).map(([code,name]) =>
+    `<option value="${code}" ${code===selected?'selected':''}>${code} · ${name}</option>`
+  ).join('');
+}
+fillSelect(fromEl,'USD'); fillSelect(toEl,'CNY');
+
+async function fetchLatest(base, symbols){
+  const url = `${API}/rates?base=${base}&quotes=${symbols}`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('latest request failed');
+  return res.json();
+}
+
+async function convert(){
+  const base=fromEl.value, target=toEl.value, amount=Number(amountEl.value||0);
+  if(base===target){
+    resultMain.textContent = `${amount.toLocaleString()} ${target}`;
+    resultSub.textContent = `1 ${base} = 1 ${target}`;
+    return;
+  }
+  try{
+    const data=await fetchLatest(base,target);
+    const rate=(Array.isArray(data)?data.find(x=>x.quote===target)?.rate:null);
+    rateCache[`${base}/${target}`]=rate;
+    resultMain.textContent = `${(amount*rate).toLocaleString(undefined,{maximumFractionDigits:2})} ${target}`;
+    resultSub.textContent = `1 ${base} = ${rate.toFixed(6)} ${target} · ${data.date}`;
+  }catch(e){
+    resultMain.textContent='获取失败'; resultSub.textContent='请检查网络连接或稍后重试';
+  }
+}
+
+function getStartDate(d){
+  const date=new Date();
+  date.setDate(date.getDate()-d);
+  return date.toISOString().slice(0,10);
+}
+
+async function fetchHistory(pair, d){
+  const [base, quote] = pair.split('/');
+  if(base===quote) return [];
+  const start=getStartDate(d), end=new Date().toISOString().slice(0,10);
+  const url=`${API}/rates?from=${start}&to=${end}&base=${base}&quotes=${quote}`;
+  const res=await fetch(url);
+  if(!res.ok) throw new Error('history request failed');
+  const json=await res.json();
+  return json.map(x=>({date:x.date,value:x.rate}));
+}
+
+function renderMain(data){
+  const ctx=document.getElementById('mainChart').getContext('2d');
+  if(mainChart) mainChart.destroy();
+  mainChart=new Chart(ctx,{
+    type:'line',
+    data:{labels:data.map(x=>x.date),datasets:[{data:data.map(x=>x.value),borderColor:'#3b6cff',backgroundColor:'rgba(59,108,255,.10)',fill:true,tension:.28,pointRadius:0,pointHitRadius:10,borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{displayColors:false,callbacks:{label:c=>` ${c.parsed.y.toFixed(6)}`}}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8,color:'#8992a6',font:{size:10}}},y:{grid:{color:'#edf0f5'},ticks:{color:'#8992a6',font:{size:10}}}}}
+  });
+}
+function renderMini(data){
+  const ctx=document.getElementById('miniChart').getContext('2d');
+  if(miniChart) miniChart.destroy();
+  const c=document.createElement('canvas');
+  miniChart=new Chart(ctx,{
+    type:'line',
+    data:{labels:data.map(x=>x.date),datasets:[{data:data.map(x=>x.value),borderColor:'#3b6cff',backgroundColor:'rgba(59,108,255,.08)',fill:true,tension:.3,pointRadius:0,borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{display:false},y:{display:false}}}
+  });
+}
+
+async function loadPair(pair=selectedPair){
+  selectedPair=pair;
+  quotePair.textContent=pair;
+  document.querySelectorAll('.pill').forEach(b=>b.classList.toggle('active',b.dataset.pair===pair));
+  try{
+    const data=await fetchHistory(pair,days);
+    if(!data.length) throw new Error('no data');
+    renderMain(data);
+    renderMini(data);
+    const first=data[0].value,last=data[data.length-1].value;
+    const pct=(last/first-1)*100;
+    quoteRate.textContent=last.toFixed(6);
+    const [b,q]=pair.split('/');
+    quoteDesc.textContent=`1 ${b} = ${last.toFixed(6)} ${q}`;
+    quoteTrend.textContent=`${pct>=0?'▲':'▼'} ${Math.abs(pct).toFixed(2)}% / ${days===365?'1Y':days+'D'}`;
+    quoteTrend.className=`trend ${pct>=0?'up':'down'}`;
+    statusText.textContent=`更新至 ${data.at(-1).date}`;
+  }catch(e){
+    statusText.textContent='历史数据加载失败';
+    document.querySelector('.footer .dot').style.background='#e04f5f';
+  }
+}
+
+async function loadHot(){
+  const base='USD';
+  const targets=['CNY','EUR','JPY','GBP','HKD','SGD'];
+  const list=document.getElementById('hotList');
+  try{
+    const latest=await fetchLatest(base,targets.join(','));
+    const jobs=targets.map(async t=>{
+      let current=latest.find(x=>x.quote===t)?.rate, startData;
+      try{
+        const hist=await fetchHistory(`${base}/${t}`,2);
+        startData=hist.length>1?hist.at(-2).value:current;
+      }catch(_){startData=current}
+      const ch=(current/startData-1)*100;
+      return {t,current,ch};
+    });
+    const rows=await Promise.all(jobs);
+    list.innerHTML=rows.map(x=>`
+      <div class="hot-item">
+        <div class="hot-left"><span class="flag">${flags[x.t]}</span><div class="currency">${x.t}<small>${currencies[x.t]}</small></div></div>
+        <div class="hot-right"><div class="hot-rate">${x.current.toFixed(4)}</div><div class="hot-change ${x.ch>=0?'up':'down'}">${x.ch>=0?'▲':'▼'} ${Math.abs(x.ch).toFixed(2)}%</div></div>
+      </div>`).join('');
+  }catch(e){
+    list.innerHTML='<div class="error">热门汇率加载失败</div>';
+  }
+}
+
+async function refreshAll(){
+  refreshBtn.disabled=true; refreshBtn.textContent='刷新中…';
+  await Promise.all([convert(),loadPair(selectedPair),loadHot()]);
+  refreshBtn.disabled=false; refreshBtn.textContent='↻ 刷新汇率';
+}
+[fromEl,toEl,amountEl].forEach(el=>el.addEventListener('input',convert));
+document.getElementById('swapBtn').addEventListener('click',()=>{
+  const x=fromEl.value; fromEl.value=toEl.value; toEl.value=x; convert();
+});
+document.querySelectorAll('.pill').forEach(b=>b.addEventListener('click',()=>loadPair(b.dataset.pair)));
+document.querySelectorAll('.range').forEach(b=>b.addEventListener('click',()=>{days=Number(b.dataset.days);document.querySelectorAll('.range').forEach(x=>x.classList.toggle('active',x===b));loadPair(selectedPair)}));
+refreshBtn.addEventListener('click',refreshAll);
+
+refreshAll();
+</script>
 </body>
 </html>
